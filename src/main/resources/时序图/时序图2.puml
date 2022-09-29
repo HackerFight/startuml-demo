@@ -1,0 +1,99 @@
+@startuml
+title Check User Balance
+skinparam sequence {
+	ArrowColor black
+	LifeLineBorderColor black
+	ParticipantBorderColor black
+	ParticipantBackgroundColor mediumturquoise
+	ActorBorderColor black
+}
+skinparam note {
+    BorderColor black
+}
+skinparam sequenceBoxBorderColor #mediumspringgreen
+
+actor USER as "User"
+box "Mini Program Partner" #technology
+  participant MINI as "Merchant Mini Program" #mediumspringgreen
+  participant MERCHANT as "merchant" #mediumspringgreen
+end box
+participant IFCSUPERGW as "ifcsupergw" #gold
+participant BIZCENTER as "bizcenter"
+participant APCASHIER as "apcashier"
+participant IFCCUSTCENTER as "ifccustcenter"
+
+autonumber 1
+USER -> MINI: access i-MMF Investment Screen
+activate MINI #mediumspringgreen
+  MINI -> MERCHANT: list payment methods
+  activate MERCHANT #mediumspringgreen
+    MERCHANT -[#red]> IFCSUPERGW: <font color=red>[NEW] OpenAPI to check whether user can pay
+    activate IFCSUPERGW #gold
+      IFCSUPERGW -[#red]> BIZCENTER: <font color=red>[NEW] New TR Service
+      activate BIZCENTER #red
+        BIZCENTER -[#red]> BIZCENTER: <font color=red>buildPayableCheckRequest
+        note right
+          <font color=red>It's crucial to define what are the parameters and format of the parameters passed in by Merchant
+        end note
+        BIZCENTER -[#red]> APCASHIER: PaymentService.payableCheck
+        activate APCASHIER
+          note right APCASHIER: .\n.\n.
+          group queryValidPayChannels
+            APCASHIER -> APCASHIER: queryPayMethods
+            APCASHIER -> APCASHIER: loadPpuPaymentPayMethods (<font color=red>Modify instructionCode's Condition to add filter for merchantId</font>)
+            note left
+              <font color=red><b>Modify:
+              <font color=red><i>instructionCode: <b>loadPpuPaymentPayMethods
+              <font color=red><i>Conditions - <b>EXCLUDE</b> MerchantId:  <principal_immf_production_merchant_id> (Principal i-MMF)
+            end note
+          end group
+          APCASHIER -> APCASHIER: buildSingleChannelRuleDecideRequest(instructionConfig: instructionSetCode=PAYABLE_CHECK_CHANNEL_AVAILABLE)
+          APCASHIER -[#red]> APCASHIER: <font color=red>Add new InstructionCode & Executor under PAYABLE_CHECK_CHANNEL_AVAILABLE
+          note left
+            <font color=red><b>New:
+            <font color=red><i>instructionCode: <b>PARTNER_TRANSFERABLE_BALANCE_NOT_ENOUGH
+            <font color=red><i>executor: IsPartnerTransferableBalanceEnoughExecutor
+            <font color=red><i>Conditions - ProductCodes: 51051000100000000001 (StandardDirectPayAcquiringProd)
+            <font color=red><i>&& MerchantId:  <principal_immf_production_merchant_id> (Principal i-MMF),
+
+            <font color=red><b>Modify:
+            <font color=red><i>instructionCode: <b>PARTNER_BALANCE_NOT_EXIST
+            <font color=red><i>Conditions - <b>ADD</b> New ProductCode: 51051000100000000001 (StandardDirectPayAcquiringProd)
+
+            <font color=red><b>Modify:
+            <font color=red><i>instructionCode: <b>PAYABLE_INVT_FUND_BALANCE_NOT_ENOUGH
+            <font color=red><i>Conditions - <b>ADD</b> New ProductCode: 51051000100000000001 (StandardDirectPayAcquiringProd)
+          end note
+          group TRANSFERABLE_BALANCE_NOT_ENOUGH - IsPartnerTransferableBalanceEnoughExecutor
+            note right APCASHIER: Created during the main TNT Project
+            APCASHIER -> IFCCUSTCENTER: memberQueryFacade.queryMemberBalance
+            activate IFCCUSTCENTER
+              IFCCUSTCENTER --> APCASHIER: MYMember (with T & NT Balance Details)
+            deactivate IFCCUSTCENTER
+            alt T Balance >= pay amount
+              APCASHIER -> APCASHIER: return enough balance
+            else
+              APCASHIER -> APCASHIER: return not enough balance
+            end alt
+          end group
+          APCASHIER -> APCASHIER: isInvtFundBalanceEnoughExecutor
+          APCASHIER --> BIZCENTER: PayableCheckResponse
+        deactivate APCASHIER
+        BIZCENTER -[#red]> BIZCENTER: <font color=red>constructPayableCheckResponse
+        BIZCENTER --[#red]> IFCSUPERGW: <font color=red>payableCheckResponse
+      deactivate BIZCENTER
+      IFCSUPERGW --[#red]> MERCHANT: <font color=red>Response
+    deactivate IFCSUPERGW
+    MERCHANT -> MERCHANT: result
+    alt #technology if TNGD's transferable balance enough
+      MERCHANT -> MERCHANT: allow TNG e-wallet as payment method
+    else
+      MERCHANT -> MERCHANT: disable TNG e-wallet as payment method
+    end alt
+    MERCHANT --> MINI: payment methods
+  deactivate MERCHANT
+  alt #technology if TNG ewallet is not available as payment method
+    MINI -> MINI: disable and grey out TNG ewallet
+  end alt
+deactivate MINI
+@enduml
