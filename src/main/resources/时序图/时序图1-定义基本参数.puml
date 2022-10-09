@@ -19,13 +19,22 @@ skinparam sequence {
 
 actor User as "User"
 
-
-
 participant UserController as "userController"
 'participant OrderController #red  
 
 == main process ==
 User -> UserController: login   
-activate User #gold   
+activate User #gold
 
+
+group InitViewResolver
+end group
+
+note right
+  笔记说明....
+end note
+
+
+alt
+end alt
 @enduml

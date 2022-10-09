@@ -1,0 +1,118 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+title qiuguan demo
+'自动添加序号，<b>是加粗
+autonumber "<b>[0]"
+
+'定义时序图公共参数
+skinparam sequence {
+    ParticipantBackgroundColor lightskyblue
+}
+'定义note的公共参数
+skinparam note {
+    BorderColor black
+}
+
+'定义参与者,如果as后面的内容添加了"",则时序图框中显示的就双引号指定的内容
+'如果没有指定双引号，则后面再画时序图走向的时候，要用as后面的内容
+actor User as user #lightskyblue
+participant LimitCenter  #pink
+participant DRM as DRM #RED
+participant UserController as userController
+participant UserFeignClient as userFeignClient
+participant UserService as userService
+participant UserMapper as userMapper
+participant ifccustomer as ifccustomer
+
+==login process==
+
+'冒号后面的内容是注释, LimitCenter没有指定as
+user -> LimitCenter: 用户登陆限流
+
+'激活，就是线条变成框框
+activate user
+  '指定线条框框的颜色
+  activate LimitCenter #yellow
+    group LimitCheckResourceDrm
+       LimitCenter --> DRM: limit check config drm
+       note right
+            <font color=red><i><b>Check</b> DRM config limit value
+            <font color=red><i>By Default, tps = 1000
+       end note
+
+       activate DRM  #red
+         DRM --> LimitCenter: 返回limit value
+       '让激活的框小一点
+       deactivate DRM
+
+        alt #mistyrose <font color=red>if merchantIds contains current merchantId</font>
+                 LimitCenter -[#red]> LimitCenter: <font color=red>set isTopupAndPayEnable to false\n<font color=red>[NEW] Add isMPCashout = true
+        end alt
+    end group
+
+    '跳出group
+    LimitCenter -> userController: login userController
+    activate userController
+     note right userController: .\n.\n.
+
+     userController -> userFeignClient: feign client check
+     activate userFeignClient
+       userFeignClient --> userController: return check result
+     deactivate userFeignClient
+
+     userController -> userController: check
+     userController -> userController: validate
+     note right
+             double check for safe
+     end note
+
+     note right userController: .\n.\n.
+
+    deactivate userController
+
+    userController -> userService: service
+    activate userController #pink
+
+    userService -> userMapper: database
+    activate userMapper #PINK
+      group DataBaseCheck
+         userMapper --> userMapper: database check
+         note right
+            optional
+         end note
+      end group
+    deactivate userMapper
+
+    userMapper -> userService: database return
+    activate userService
+      '当行的note不要加 end note
+      note right userService: .\n.\n.
+      userService --> userService: model convert
+      userService --> userService: enum check
+    'deactivate userService, 在这里的话，箭头会指向虚线
+
+      userService -> userController: return
+    deactivate userService
+
+    userService -> user: return to user
+
+== login success for topup pay ==
+user -> ifccustomer: prepare topup == login success for topup pay
+activate ifccustomer #pink
+  note right ifccustomer: .\n.\n.
+  ifccustomer --> ifccustomer: check balance
+  ifccustomer --> ifccustomer: check T balance
+
+  group BalanceValidateProcessor
+     ifccustomer --> ifccustomer: async task enable
+     note right
+        enable async task for check NT balance
+     end note
+  end group
+
+  ifccustomer -> user: return to user
+    note left
+       if balance enough can topup pay
+    end note
+
+@enduml

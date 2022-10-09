@@ -1,0 +1,50 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+title qiuguan demo
+'自动添加序号，<b>是加粗
+autonumber "<b>[0]"
+
+'定义时序图公共参数
+skinparam sequence {
+    ParticipantBackgroundColor lightskyblue
+}
+'定义note的公共参数
+skinparam note {
+    BorderColor black
+}
+
+'定义参与者,如果as后面的内容添加了"",则时序图框中显示的就双引号指定的内容
+'如果没有指定双引号，则后面再画时序图走向的时候，要用as后面的内容
+actor User as "user" #lightskyblue
+participant LimitCenter  #pink
+participant DRM as DRM #RED
+participant UserController as userController
+participant UserFeignClient as userFeignClient
+participant UserService as userService
+participant UserMapper as userMapper
+
+==login process==
+
+'这里要使用大写字母开头的User, 因为 "user" 仅用来标识序列图展示的内容
+User -> LimitCenter: 用户登陆限流
+activate User
+  activate LimitCenter #YELLOW
+    '注意：这里写完group后，它会将group 框定位到第一个序列图上，只要
+    '在内部写点东西后，他就会定位到具体位置了
+    group LimitCheckResourceDrm
+      LimitCenter --> DRM: limit config drm
+      activate DRM #YELLOW
+        DRM --> LimitCenter: return limit value
+      '让激活的框小一点
+      deactivate DRM
+
+
+      alt #mistyrose <font color=red>if merchantIds contains current merchantId</font>
+          LimitCenter -[#red]> LimitCenter: <font color=red>set isTopupAndPayEnable to false\n<font color=red>[NEW] Add isMPCashout = true
+      end alt
+    end group
+
+
+
+
+@enduml

@@ -1,0 +1,123 @@
+@startuml
+title TNT MP Cashier Payment
+skinparam sequence {
+	ArrowColor black
+	LifeLineBorderColor black
+	ParticipantBorderColor black
+	ParticipantBackgroundColor mediumturquoise
+	ActorBorderColor black
+}
+skinparam note {
+    BorderColor black
+}
+
+participant APP as "App" #deepskyblue
+participant MPAAS as "MPAAS" #gold
+participant APMOBILEWALLET as "apmobilewallet"
+participant DRM as "DRM" #gold
+participant APCASHIER as "apcashier"
+participant APACQUIRECENTER as "apacquirecenter"
+participant IFCASSETFLUX as "ifcassetflux"
+participant IFCRISKCLOUD as "ifcriskcloud"
+
+autonumber 1
+== CashierMain / Consult Pay View ==
+
+APP -> MPAAS: alipayplus.mobilewallet.cashier.main
+activate APP
+  activate MPAAS #gold
+    MPAAS -> APMOBILEWALLET: cashierMain
+    activate APMOBILEWALLET
+      group InitSitePayViewProcessor
+        APMOBILEWALLET -> DRM: com.alipayplus.mobile.prototype.cashier.config.DynamicConfig
+        note right
+          <font color=red><i><b>ADD</b> a new DRM attribute for list of Merchant not supporting Topup & Pay
+          <font color=red><i>By Default, add (Principal i-MMF)'s PROD merchantId
+        end note
+        activate DRM #gold
+          DRM --> APMOBILEWALLET: list of merchantIds
+        deactivate DRM
+        alt #mistyrose <font color=red>if merchantIds contains current merchantId</font>
+          APMOBILEWALLET -[#red]> APMOBILEWALLET: <font color=red>set isTopupAndPayEnable to false\n<font color=red>[NEW] Add isMPCashout = true
+        end alt
+      end group
+      APMOBILEWALLET -> APCASHIER: consultPayView
+      activate APCASHIER
+        note right APCASHIER: .\n.\n.
+        APCASHIER -> APACQUIRECENTER: PayOrderResolveService.resolveAndCheckPayable
+        activate APACQUIRECENTER
+          APACQUIRECENTER --> APCASHIER: payOrder
+        deactivate APACQUIRECENTER
+        APCASHIER -> APCASHIER: queryValidPayChannels
+        APCASHIER -> APCASHIER: loadPpuPaymentPayMethods (<font color=red>Modify instructionCode's Condition to add filter for merchantId</font>)
+        note right
+          Refer this change in the Payable API above. Is the same.
+        end note
+        APCASHIER -> APCASHIER: executeChannelRule (instructionConfig: instructionSetCode=CHANNEL_AVAILABLE)
+        APCASHIER -[#red]> APCASHIER: <font color=red>Update TRANSFERABLE_BALANCE_NOT_ENOUGH instructionCode
+        note right
+          <font color=red><b>Modify:
+          <font color=red><i>instructionCode: <b>TRANSFERABLE_BALANCE_NOT_ENOUGH
+          <font color=red><i>Conditions - <b>ADD</b> MerchantId:  <principal_immf_production_merchant_id> (Principal i-MMF)
+        end note
+        group TRANSFERABLE_BALANCE_NOT_ENOUGH - IsPartnerTransferableBalanceEnoughExecutor
+          note right APCASHIER: Feature introduced in TNT main project
+        end group
+        APCASHIER -> IFCRISKCLOUD: payOptionConsult
+        activate IFCRISKCLOUD
+          IFCRISKCLOUD --> APCASHIER: SecurityCommonResult
+        deactivate IFCRISKCLOUD
+        note right APCASHIER: .\n.\n.
+        APCASHIER --> APMOBILEWALLET: payView
+      deactivate APCASHIER
+      APMOBILEWALLET --> MPAAS: payView
+    deactivate APMOBILEWALLET
+    MPAAS --> APP: payView
+  deactivate MPAAS
+  alt #mistyrose <font color=red>IF isTopupAndPayEnable == false && isMPCashout == true</font>
+    APP -[#red]> APP: <font color=red>do <b>NOT</b> show the reload button. Grey out the Pay button
+  end alt
+== Cashier Pay ==
+  APP -> MPAAS: alipayplus.mobilewallet.cashier.pay
+  activate MPAAS #gold
+    MPAAS -> APMOBILEWALLET: cashierPay
+    activate APMOBILEWALLET
+      note right APMOBILEWALLET: .\n.\n.
+      APMOBILEWALLET -> APCASHIER: PpuPaymentService.pay
+      activate APCASHIER
+        APCASHIER -> APACQUIRECENTER: PayOrderResolveService.resolveAndCheckPayable
+        activate APACQUIRECENTER
+          APACQUIRECENTER -> APACQUIRECENTER: construct PayOrder
+          APACQUIRECENTER --> APCASHIER: payOrder
+        deactivate APACQUIRECENTER
+        APCASHIER -> APCASHIER: build FundBills
+        APCASHIER -> IFCRISKCLOUD: payDecisionConsult
+        activate IFCRISKCLOUD
+          IFCRISKCLOUD --> APCASHIER:
+          note right: assuming return ACCEPT
+        deactivate IFCRISKCLOUD
+        APCASHIER -> APCASHIER: channelAvailabilityCheck
+        group businessInfoMarking
+          APCASHIER -[#red]> APCASHIER: <font color=red>Add new InstructionCode & Executor under FUND_BILL_MARKING
+          note right
+            <font color=red><b>New:
+            <font color=red><i>instructionCode: <b>TNT_MP_INVESTMENT_FLOW
+            <font color=red><i>executor: fundBillMarkingExecutor
+            <font color=red><i>Conditions - ProductCodes: 51051000100000000001 (StandardDirectPayAcquiringProd)
+            <font color=red><i>&& MerchantId: <principal_immf_production_merchant_id> (Principal i-MMF),
+          end note
+        end group
+        APCASHIER -> APCASHIER: buildPayRequest
+        APCASHIER -> IFCASSETFLUX: PaymentService.pay
+        activate IFCASSETFLUX
+          IFCASSETFLUX --> APCASHIER: return AssetFluxResultDTO
+        deactivate IFCASSETFLUX
+        APCASHIER -> APCASHIER: buildPayAcceptance
+        APCASHIER --> APMOBILEWALLET: PayAcceptance
+      deactivate APCASHIER
+      APMOBILEWALLET --> MPAAS: Pay result
+    deactivate APMOBILEWALLET
+    MPAAS --> APP: Pay Result
+  deactivate MPAAS
+
+@enduml
