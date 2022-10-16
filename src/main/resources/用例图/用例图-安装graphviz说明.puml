@@ -1,0 +1,41 @@
+@startuml
+'https://plantuml.com/use-case-diagram
+
+
+
+
+'这个例子主要是说明下如何 graphviz
+'brew install graphviz, 它在安装过程中，遇到很多依赖无法自动下载完成
+'那么就可以把他需要的依赖单独复制出来，然后用brew install xx 安装
+'如果有多个，则用空格分开即可
+
+
+'安装完依赖的包后，记得：brew install graphviz
+
+'安装完 brew install graphviz 后，记得修改下IDEA中 platuml
+'插件的配置,参考：https://blog.csdn.net/qq_42771487/article/details/125285137
+
+
+
+'修改配置后，重启IDEA,然后就可以画除了时序图以外的其他图了，不然默认只能画时序图.
+
+
+:Main Admin: as Admin
+(Use the application) as (Use)
+
+User -> (Start)
+User --> (Use)
+
+Admin ---> (Use)
+
+note right of Admin : This is an example.
+
+note right of (Use)
+A note can also
+be on several lines
+end note
+
+note "This note is connected\nto several objects." as N2
+(Start) .. N2
+N2 .. (Use)
+@enduml
