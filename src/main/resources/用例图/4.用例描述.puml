@@ -1,0 +1,26 @@
+@startuml
+'https://plantuml.com/use-case-diagram
+
+'==, 双行分隔. ==TEXT== 可指定文本
+'__, 略粗分隔. __TEXT__ 可指定文本
+'--, 最细分隔. --TEXT-- 可指定文本
+
+'usecase UC as "在整个字符串内部使用上面的符号 ==  __ --"
+
+usecase UC as "这是我的一个测试
+
+__
+
+我在测试什么呢？
+
+==
+
+我也不知道呀
+..我很开心..
+
+谢谢你们
+
+"
+
+
+@enduml

@@ -1,0 +1,20 @@
+@startuml
+'https://plantuml.com/use-case-diagram
+
+'(NAME)
+'usecase 关键字
+'as 用于指定别名
+
+
+'加不加双引号都可以
+("这是一个基本的用例")
+
+
+("as 起个别名") as (UC2)
+
+usecase "usecase 命令"
+
+usecase ("usecase \n as 别名") as (UC3)
+
+
+@enduml

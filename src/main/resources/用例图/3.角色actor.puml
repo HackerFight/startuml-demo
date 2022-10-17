@@ -1,0 +1,27 @@
+@startuml
+'https://plantuml.com/use-case-diagram
+
+':NAME:
+'actor 关键字
+'as 用于指定别名
+'在连接语法中直接以文本出现, 在用例图中表示 actor
+
+
+纯文本 -> (UC)
+
+:User:
+
+:Qiuguan: as Qiuguan2
+
+actor huihui
+
+actor "baby" as baby2
+
+
+'水平  ->
+zhangxinyu -> (my baby)
+
+'垂直， -->
+zhangxinyu2 --> (my baby 2)
+
+@enduml
