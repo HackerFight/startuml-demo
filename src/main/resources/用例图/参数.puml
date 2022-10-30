@@ -1,0 +1,20 @@
+@startuml
+'https://plantuml.com/use-case-diagram
+
+skinparam usecase {
+   BackgroundColor DarkSeaGreen
+   BorderColor yellow
+   ArrowColor Olive
+   ActorBorderColor black
+   ActorFontColor Courier
+}
+
+:User: -> (Merchant)
+(Merchant) -> (A+)
+
+(A+) -> (Merchant)
+(Merchant) -> :User:
+
+(A+) -> (Merchant)
+
+@enduml

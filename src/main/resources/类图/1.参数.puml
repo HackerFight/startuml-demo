@@ -1,0 +1,43 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+'参考官方文档：https://plantuml.com/zh/class-diagram
+
+skinparam class {
+   BackgroundColor #FEFFD4
+   ArrowColor #0ACF97
+   BorderColor #964455
+}
+
+interface PaymentService {
+   void pay(PayRequest request)
+}
+
+abstract class AbstractPaymentService
+
+
+class PayRequest {
+   __private__
+   - String userId
+
+   __protected__
+   # String name
+
+   __package private__
+   ~ String phone
+
+   ..
+   __public__
+   + int status
+   + boolean enable
+
+   __
+   ..static data..
+   {static} String key
+   --
+   ..abstract method..
+   {abstract} void init()
+   --
+   ..simple setter/getter..
+}
+@enduml
